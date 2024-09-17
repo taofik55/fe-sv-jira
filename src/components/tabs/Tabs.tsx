@@ -78,7 +78,7 @@ export default function BasicTabs() {
       link.click();
       link.remove();
     } catch (error) {
-      console.error('Error downloading file:', error);
+    //   console.error('Error downloading file:', error);
     }
   };
 
@@ -87,10 +87,10 @@ export default function BasicTabs() {
     setError(null);
     try {
       const response = await axios.get('https://jsonplaceholder.typicode.com/posts');
-      console.log(response.data); // Log data to the console
+    //   console.log(response.data); // Log data to the console
       setData(response.data);
     } catch (error: any) {
-      console.error('Error fetching data:', error);
+    //   console.error('Error fetching data:', error);
       setError('Failed to fetch data');
     } finally {
       setLoading(false);
