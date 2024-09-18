@@ -1,52 +1,124 @@
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import Paper from '@mui/material/Paper';
+import { Paper, Button } from '@mui/material';
 
 const columns: GridColDef[] = [
-  { field: 'id', headerName: 'ID', width: 20 },
-  { field: 'firstName', headerName: 'First name', width: 130 },
-  { field: 'lastName', headerName: 'Last name', width: 130 },
-  {
-    field: 'age',
-    headerName: 'Age',
-    type: 'number',
-    width: 90,
-  },
-  {
-    field: 'fullName',
-    headerName: 'Full name',
-    description: 'This column has a value getter and is not sortable.',
-    sortable: false,
-    width: 400,
-    valueGetter: (value, row) => `${row.firstName || ''} ${row.lastName || ''}`,
-  },
+  { field: 'UserID', headerName: 'User ID', width: 100 },
+  { field: 'JiraUserID', headerName: 'Jira User ID', width: 200 },
+  { field: 'DisplayName', headerName: 'Display Name', width: 200 },
+  { field: 'Email', headerName: 'Email', width: 200 },
+  { field: 'Active', headerName: 'Active', width: 100 },
+  { field: 'Created', headerName: 'Created Date', width: 200 },
 ];
 
-const rows = [
-  { id: 1, lastName: 'Snow', firstName: 'Jon', age: 35 },
-  { id: 2, lastName: 'Lannister', firstName: 'Cersei', age: 42 },
-  { id: 3, lastName: 'Lannister', firstName: 'Jaime', age: 45 },
-  { id: 4, lastName: 'Stark', firstName: 'Arya', age: 16 },
-  { id: 5, lastName: 'Targaryen', firstName: 'Daenerys', age: null },
-  { id: 6, lastName: 'Melisandre', firstName: null, age: 150 },
-  { id: 7, lastName: 'Clifford', firstName: 'Ferrara', age: 44 },
-  { id: 8, lastName: 'Frances', firstName: 'Rossini', age: 36 },
-  { id: 9, lastName: 'Roxie', firstName: 'Harvey', age: 65 },
-];
+type TableProps = {
+    title: string;
+};
 
-const paginationModel = { page: 0, pageSize: 5 };
 
-export default function DataTable() {
-  return (
-    <Paper sx={{marginBottom: 2.5, height: 400, width: '100%' }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        initialState={{ pagination: { paginationModel } }}
-        pageSizeOptions={[5, 10]}
-        checkboxSelection
-        sx={{ border: 0 }}
-      />
-    </Paper>
+// const paginationModel = { page: 0, pageSize: 5 };
+
+export default function DataTable({ title }: TableProps) {
+    const [data, setData] = useState<any[]>([]);
+    const [columns, setColumns] = useState<GridColDef[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [idField, setIdField] = useState<string | null>(null);
+
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const url = `https://caring-pheasant-special.ngrok-free.app/${title}`; // Use your actual endpoint
+          const response = await axios.get(url, {
+            headers: {
+              'ngrok-skip-browser-warning': 'true', // Custom header added here
+            },
+          });
+          const firstItem = response.data[0];
+          const keys = Object.keys(firstItem);
+          const dynamicColumns = Object.keys(firstItem).map(key => ({
+            field: key,
+            headerName: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize first letter of the header
+            flex: 1,
+          }));
+    
+          setColumns(dynamicColumns);
+          const idField = keys[0]; 
+          setIdField(idField);
+
+    
+          setData(response.data);
+        } catch (error: any) {
+        //   console.error('Error fetching data:', error);
+          setError('Failed to fetch data');
+        } finally {
+          setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleDownload = async (filename: string, endpoint: string) => {
+        try {
+            let urls = `https://caring-pheasant-special.ngrok-free.app/download/${endpoint}`
+            // console.log(urls)
+            const response = await axios.get(urls, {
+                responseType: 'blob', // Important for handling file downloads  
+                headers: {
+                    'ngrok-skip-browser-warning': 'true', // Custom header added here
+                },
+            });
+            // console.log(response.data)
+            // Create a link element to trigger the download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename); // Set the filename for the downloaded file
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link)
+            window.URL.revokeObjectURL(url)
+            // link.remove();
+        } catch (error) {
+            // console.error('Error downloading file:', error);
+        }
+      };
+
+    return (
+        <>
+            <Paper sx={{ marginBottom: 2.5, width: '100%' }}>
+            {error && <div>Error: {error}</div>}
+            {loading ? (
+                <div>Loading...</div>
+            ) : (
+                <div style={{ height: 400, width: '100%', overflowX: 'auto' }}>
+                <DataGrid
+                    rows={data}
+                    columns={columns}
+                    // pageSizeOptions={[5, 10]}
+                    // checkboxSelection
+                    // disableSelectionOnClick
+                    getRowId={(row) => row[idField as string]} // Use the dynamic ID field
+                    sx={{ border: 0 }}
+                />
+                </div>
+            )}
+            </Paper>
+            {loading?
+            <Button
+                variant="contained"
+                disabled
+                // onClick={() => handleDownload(title + '.csv', title)}
+            >Download</Button>
+            :<Button
+                variant="contained"
+                color="primary"
+                onClick={() => handleDownload(title + '.csv', title)}
+            >Download</Button>}
+        </>
   );
 }
